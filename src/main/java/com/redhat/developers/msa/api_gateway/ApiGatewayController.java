@@ -19,16 +19,20 @@ package com.redhat.developers.msa.api_gateway;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.core.Context;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ServerSpan;
 import com.redhat.developers.msa.api_gateway.feign.FeignClientFactory;
+import com.redhat.developers.msa.api_gateway.tracing.TracerResolver;
 
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import io.swagger.annotations.ApiOperation;
 
 @RestController
@@ -37,8 +41,7 @@ public class ApiGatewayController {
     @Autowired
     private FeignClientFactory feignClientFactory;
 
-    @Autowired
-    private Brave brave;
+    private Tracer tracer = TracerResolver.getTracer();
 
     /**
      * This /api REST endpoint uses Java 8 parallel stream to create the Feign, invoke it, and collect the result as a List that
@@ -49,14 +52,12 @@ public class ApiGatewayController {
     @CrossOrigin
     @RequestMapping(method = RequestMethod.GET, value = "/api", produces = "application/json")
     @ApiOperation("Invoke all microservices in parallel")
-    public List<String> api() {
-        // This stores the Original/Parent ServerSpan from ZiPkin.
-        ServerSpan serverSpan = brave.serverSpanThreadBinder().getCurrentServerSpan();
+    public List<String> api(@Context HttpServletRequest request) {
+        Span requestSpan = (Span) request.getAttribute("tracing.requestSpan");
         return feignClientFactory.getFeignClients()
             .stream()
             .parallel()
-            // We set the ServerSpan to each client to avoid loosing the tracking in a multi-thread invocation
-            .map((feign) -> feign.invokeService(serverSpan))
+            .map((feign) -> feign.invokeService(tracer.buildSpan("GET").asChildOf(requestSpan).start()))
             .collect(Collectors.toList());
     }
 

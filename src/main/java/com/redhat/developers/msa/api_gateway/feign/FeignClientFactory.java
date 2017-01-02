@@ -3,21 +3,16 @@ package com.redhat.developers.msa.api_gateway.feign;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ServerSpan;
 import com.redhat.developers.msa.api_gateway.GenericFeignClient;
+
+import io.opentracing.Span;
 
 @Component
 @Scope(value = "singleton")
 public class FeignClientFactory {
-
-    @Autowired
-    private Brave brave;
-
     private List<GenericFeignClient<?>> services;
 
     /**
@@ -39,11 +34,11 @@ public class FeignClientFactory {
     class AlohaFeignClient extends GenericFeignClient<AlohaService> {
 
         public AlohaFeignClient() {
-            super(AlohaService.class, "aloha", () -> "Aloha response (fallback)", brave);
+            super(AlohaService.class, "aloha", () -> "Aloha response (fallback)");
         }
 
         @Override
-        public String invokeService(ServerSpan serverSpan) {
+        public String invokeService(Span serverSpan) {
             return createFeign(serverSpan).aloha();
         }
 
@@ -52,11 +47,11 @@ public class FeignClientFactory {
     class BonjourFeignClient extends GenericFeignClient<BonjourService> {
 
         public BonjourFeignClient() {
-            super(BonjourService.class, "bonjour", () -> "Bonjour response (fallback)", brave);
+            super(BonjourService.class, "bonjour", () -> "Bonjour response (fallback)");
         }
 
         @Override
-        public String invokeService(ServerSpan serverSpan) {
+        public String invokeService(Span serverSpan) {
             return createFeign(serverSpan).bonjour();
         }
 
@@ -65,11 +60,11 @@ public class FeignClientFactory {
     class HolaFeignClient extends GenericFeignClient<HolaService> {
 
         public HolaFeignClient() {
-            super(HolaService.class, "hola", () -> "Hola response (fallback)", brave);
+            super(HolaService.class, "hola", () -> "Hola response (fallback)");
         }
 
         @Override
-        public String invokeService(ServerSpan serverSpan) {
+        public String invokeService(Span serverSpan) {
             return createFeign(serverSpan).hola();
         }
 
@@ -78,11 +73,11 @@ public class FeignClientFactory {
     class OlaFeignClient extends GenericFeignClient<OlaService> {
 
         public OlaFeignClient() {
-            super(OlaService.class, "ola", () -> "Ola response (fallback)", brave);
+            super(OlaService.class, "ola", () -> "Ola response (fallback)");
         }
 
         @Override
-        public String invokeService(ServerSpan serverSpan) {
+        public String invokeService(Span serverSpan) {
             return createFeign(serverSpan).ola();
         }
 

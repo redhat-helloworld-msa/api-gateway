@@ -19,18 +19,14 @@ package com.redhat.developers.msa.api_gateway;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
-import com.github.kristofa.brave.Brave;
-import com.github.kristofa.brave.ClientRequestInterceptor;
-import com.github.kristofa.brave.ClientResponseInterceptor;
-import com.github.kristofa.brave.ServerSpan;
-import com.github.kristofa.brave.http.DefaultSpanNameProvider;
-import com.github.kristofa.brave.httpclient.BraveHttpRequestInterceptor;
-import com.github.kristofa.brave.httpclient.BraveHttpResponseInterceptor;
+import com.redhat.developers.msa.api_gateway.tracing.ApiGatewayHttpRequestInterceptor;
+import com.redhat.developers.msa.api_gateway.tracing.ApiGatewayHttpResponseInterceptor;
 
 import feign.Logger;
 import feign.Logger.Level;
 import feign.httpclient.ApacheHttpClient;
 import feign.hystrix.HystrixFeign;
+import io.opentracing.Span;
 
 /**
  * This class constructs a Feign Client to be invoked
@@ -44,31 +40,26 @@ public abstract class GenericFeignClient<T> {
 
     private T fallBack;
 
-    private Brave brave;
-
     /**
      * We need the following information to instantiate a FeignClient
      * 
      * @param classType Service that will be invoked
      * @param serviceName the name of the service. It will be used in the hostname and in zipking tracing
      * @param fallback the fallback implementation
-     * @param brave {@link Brave} instance used to configure {@link ClientRequestInterceptor} and
-     *        {@link ClientResponseInterceptor}
      */
-    public GenericFeignClient(Class<T> classType, String serviceName, T fallback, Brave brave) {
+    public GenericFeignClient(Class<T> classType, String serviceName, T fallback) {
         this.classType = classType;
         this.serviceName = serviceName;
         this.fallBack = fallback;
-        this.brave = brave;
     }
 
     /**
-     * This should be implemented to call each service interface using the original {@link ServerSpan}
+     * This should be implemented to call each service interface using the original {@link Span}
      * 
-     * @param serverSpan The original {@link ServerSpan} received from ZipKin
+     * @param serverSpan The original {@link Span} received from ZipKin
      * @return Return for each endpoint
      */
-    public abstract String invokeService(ServerSpan serverSpan);
+    public abstract String invokeService(Span serverSpan);
 
     /**
      * This is were the "magic" happens: it creates a Feign, which is a proxy interface for remote calling a REST endpoint with
@@ -78,18 +69,26 @@ public abstract class GenericFeignClient<T> {
      * 
      * @return The feign pointing to the service URL and with Hystrix fallback.
      */
-    protected T createFeign(ServerSpan serverSpan) {
+    protected T createFeign(Span serverSpan) {
         final CloseableHttpClient httpclient =
             HttpClients.custom()
-                .addInterceptorFirst(new BraveHttpRequestInterceptor(brave.clientRequestInterceptor(), new DefaultSpanNameProvider()))
-                .addInterceptorFirst(new BraveHttpResponseInterceptor(brave.clientResponseInterceptor()))
+                .addInterceptorFirst(new ApiGatewayHttpRequestInterceptor(serverSpan))
+                .addInterceptorFirst(new ApiGatewayHttpResponseInterceptor(serverSpan))
                 .build();
-        String url = String.format("http://%s:8080/", serviceName);
+
+        String url = System.getenv(String.format("%s_SERVER_URL", serviceName.toUpperCase()));
+        if (null == url || url.isEmpty()) {
+            String host = System.getenv(String.format("%s_SERVICE_HOST", serviceName.toUpperCase()));
+            String port = System.getenv(String.format("%s_SERVICE_PORT", serviceName.toUpperCase()));
+            if (null == host) {
+                url = String.format("http://%s:8080/", serviceName);
+            } else {
+                url = String.format("http://%s:%s", host, port);
+            }
+        }
+
         return HystrixFeign.builder()
-            // Use apache HttpClient which contains the ZipKin Interceptors
             .client(new ApacheHttpClient(httpclient))
-            // Bind Zipkin Server Span to Feign Thread
-            .requestInterceptor((t) -> brave.serverSpanThreadBinder().setCurrentSpan(serverSpan))
             .logger(new Logger.ErrorLogger()).logLevel(Level.BASIC)
             .target(classType, url, fallBack);
     }
