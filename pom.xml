@@ -38,9 +38,9 @@
 		<maven.compiler.source>1.8</maven.compiler.source>
 
 		<!-- other versions -->
-		<camel.version>2.18.2</camel.version>
+		<camel.version>2.18.3</camel.version>
 		<spring-boot.version>1.4.4.RELEASE</spring-boot.version>
-		<brave.version>3.9.1</brave.version>
+		<brave.version>4.0.6</brave.version>
 		<springfox.version>2.4.0</springfox.version>
 
 		<!-- fabric8 version -->

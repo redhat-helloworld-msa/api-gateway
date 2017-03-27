@@ -19,10 +19,6 @@ package com.redhat.developers.msa.api_gateway;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.github.kristofa.brave.EmptySpanCollector;
-import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
-import com.github.kristofa.brave.http.HttpSpanCollector;
-
 import org.apache.camel.CamelContext;
 import org.apache.camel.component.hystrix.metrics.servlet.HystrixEventStreamServlet;
 import org.apache.camel.component.servlet.CamelHttpTransportServlet;
@@ -30,6 +26,10 @@ import org.apache.camel.zipkin.ZipkinTracer;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.github.kristofa.brave.EmptySpanCollector;
+import com.github.kristofa.brave.EmptySpanCollectorMetricsHandler;
+import com.github.kristofa.brave.http.HttpSpanCollector;
 
 @Configuration
 public class CamelConfiguration {
@@ -70,7 +70,6 @@ public class CamelConfiguration {
 
         // Map Camel endpoints to names
         Map<String, String> clientConfig = new HashMap<>();
-        clientConfig.put("http4:aloha:*", "aloha");
         clientConfig.put("http4:hola:*", "hola");
         clientConfig.put("http4:ola:*", "ola");
         clientConfig.put("http4:bonjour:*", "bonjour");
@@ -80,6 +79,7 @@ public class CamelConfiguration {
         // Map consumer endpoints to names
         Map<String, String> serverConfig = new HashMap<>();
         serverConfig.put("servlet:*", "api-gateway");
+        serverConfig.put("direct:ola", "ola");
 
         zipkin.setServerServiceMappings(serverConfig);
 
