@@ -32,56 +32,60 @@ import com.uber.jaeger.samplers.ProbabilisticSampler;
 import com.uber.jaeger.senders.Sender;
 import com.uber.jaeger.senders.UdpSender;
 
+
 import io.opentracing.Tracer;
 import io.opentracing.noop.NoopTracerFactory;
 
 @Configuration
 public class CamelConfiguration {
-	private static final Logger log = Logger.getLogger(CamelConfiguration.class.getName());
+    private static final Logger log = Logger.getLogger(CamelConfiguration.class.getName());
 
-	/**
-	 * Bind the Camel servlet at the "/api" context path.
-	 */
-	@Bean
-	public ServletRegistrationBean camelServletRegistrationBean() {
-		ServletRegistrationBean mapping = new ServletRegistrationBean();
-		mapping.setServlet(new CamelHttpTransportServlet());
-		mapping.addUrlMappings("/api/*");
-		mapping.setName("CamelServlet");
-		mapping.setLoadOnStartup(1);
+    /**
+     * Bind the Camel servlet at the "/api" context path.
+     */
+    @Bean
+    public ServletRegistrationBean camelServletRegistrationBean() {
+        ServletRegistrationBean mapping = new ServletRegistrationBean();
+        mapping.setServlet(new CamelHttpTransportServlet());
+        mapping.addUrlMappings("/api/*");
+        mapping.setName("CamelServlet");
+        mapping.setLoadOnStartup(1);
 
-		return mapping;
-	}
+        return mapping;
+    }
 
-	/**
-	 * Bind the Hystrix servlet to /hystrix.stream
-	 */
-	@Bean
-	public ServletRegistrationBean hystrixServletRegistrationBean() {
-		ServletRegistrationBean mapping = new ServletRegistrationBean();
-		mapping.setServlet(new HystrixEventStreamServlet());
-		mapping.addUrlMappings("/hystrix.stream");
-		mapping.setName("HystrixEventStreamServlet");
+    /**
+     * Bind the Hystrix servlet to /hystrix.stream
+     */
+    @Bean
+    public ServletRegistrationBean hystrixServletRegistrationBean() {
+        ServletRegistrationBean mapping = new ServletRegistrationBean();
+        mapping.setServlet(new HystrixEventStreamServlet());
+        mapping.addUrlMappings("/hystrix.stream");
+        mapping.setName("HystrixEventStreamServlet");
 
-		return mapping;
-	}
+        return mapping;
+    }
 
-	@Bean
-	public Tracer tracer() {
-		String jaegerURL = System.getenv("JAEGER_SERVER_HOSTNAME");
-		if (jaegerURL != null) {
-			log.info("Using Jaeger tracer");
-			return jaegerTracer(jaegerURL);
-		}
+    @Bean
+    public Tracer tracer() {
+        String jaegerURL = System.getenv("JAEGER_SERVER_HOSTNAME");
+        if (jaegerURL != null) {
+            log.info("Using Jaeger tracer");
+            return jaegerTracer(jaegerURL);
+        }
 
-		log.info("Using Noop tracer");
-		return NoopTracerFactory.create();
-	}
+        log.info("Using Noop tracer");
+        return NoopTracerFactory.create();
+    }
 
-	private Tracer jaegerTracer(String url) {
-		Sender sender = new UdpSender(url, 0, 0);
-		return new com.uber.jaeger.Tracer.Builder("api-gateway",
-				new RemoteReporter(sender, 100, 50, new Metrics(new StatsFactoryImpl(new NullStatsReporter()))),
-				new ProbabilisticSampler(1.0)).build();
-	}
+
+    private Tracer jaegerTracer(String url) {
+        Sender sender = new UdpSender(url, 0, 0);
+        return new com.uber.jaeger.Tracer.Builder("api-gateway",
+                new RemoteReporter(sender, 100, 50,
+                        new Metrics(new StatsFactoryImpl(new NullStatsReporter()))),
+                new ProbabilisticSampler(1.0))
+                .build();
+    }
 }
